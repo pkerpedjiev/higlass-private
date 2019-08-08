@@ -15,6 +15,7 @@ function currTime() {
 /////////////////////////////////////////////////
 
 const chromInfoBisector = bisector(d => d.pos).left;
+const segmentFromBisector = bisector(d => d.from).right;
 
 const chrToAbs = (chrom, chromPos, chromInfo) => chromInfo.chrPositions[chrom].pos + chromPos;
 
@@ -387,6 +388,9 @@ function segmentsToRows(segments, optionsIn) {
   let currRow = 0;
 
   const outputRows = newRows;
+  let counter = 0;
+
+  const initialLength = filteredSegments.length;
 
   while (filteredSegments.length) {
     const row = newRows[currRow] || [];
@@ -425,6 +429,7 @@ function segmentsToRows(segments, optionsIn) {
           row.push(seg);
           // console.log('adding:', seg, row.slice(0));
           filteredSegments.splice(ix, 1);
+          // console.log('ix2:', ix);
           ix += direction;
           continue;
         }
@@ -449,6 +454,16 @@ function segmentsToRows(segments, optionsIn) {
         }
 
         if (intersects) {
+          // console.log('ix1:', ix, 'currRow:', currRow, 'currRowPosition:', currRowPosition);
+          if (direction === 1) {
+            const newIx = segmentFromBisector(filteredSegments, row[currRowPosition].to + padding);
+
+            ix = newIx;
+            // console.log('ix1:', ix, 'currRowPosition', currRowPosition);
+            counter += 1;
+            continue;
+          }
+          // console.log('next', nextIx);
           ix += direction;
           continue;
         }
@@ -466,6 +481,7 @@ function segmentsToRows(segments, optionsIn) {
           filteredSegments.splice(ix, 1);
         }
 
+        // console.log('ix:', ix);
         ix += direction;
       }
 
@@ -480,7 +496,7 @@ function segmentsToRows(segments, optionsIn) {
   }
 
   const t2 = currTime();
-  console.log('segmentsToRows time', t2 - t1, '# of segments:', segments.length);
+  console.log('segmentsToRows time', t2 - t1, '# of segments:', initialLength, "counter:", counter);
   return outputRows;
 }
 
