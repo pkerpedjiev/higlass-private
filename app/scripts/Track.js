@@ -182,6 +182,14 @@ class Track {
   respondsToPosition(x, y) {
     return this.isWithin(x, y);
   }
+
+  zoomedY(trackY, kMultiplier) {
+
+  }
+
+  movedY(dY) {
+
+  }
 }
 
 export default Track;
