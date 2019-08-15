@@ -4,6 +4,7 @@ import * as PIXI from 'pixi.js';
 import { spawn, Thread, Worker } from 'threads';
 import Tiled1DPixiTrack from './Tiled1DPixiTrack';
 import { trackUtils } from './utils';
+import { zoomIdentity } from 'd3-zoom';
 
 function currTime() {
   const d = new Date();
@@ -50,6 +51,8 @@ class PileupTrack extends Tiled1DPixiTrack {
     super(context, options);
 
     this.worker = this.dataFetcher.worker;
+    this.valueScaleTransform = zoomIdentity;
+
 
     // we scale the entire view up until a certain point
     // at which point we redraw everything to get rid of
@@ -184,6 +187,52 @@ class PileupTrack extends Tiled1DPixiTrack {
     );
 
     this.setVisibleTiles(tiles);
+  }
+
+  setPosition(newPosition) {
+    super.setPosition(newPosition);
+
+    this.pMain.position.y = this.position[1];
+    this.pMain.position.x = this.position[0];
+
+    this.pMouseOver.position.y = this.position[1];
+    this.pMouseOver.position.x = this.position[0];
+  }
+
+  movedY(dY) {
+    const vst = this.valueScaleTransform;
+    const height = this.dimensions[1];
+
+    // clamp at the bottom and top
+    if (
+      vst.y + dY / vst.k > -(vst.k - 1) * height
+      && vst.y + dY / vst.k < 0
+    ) {
+      this.valueScaleTransform = vst.translate(
+        0, dY / vst.k
+      );
+    }
+
+    this.segmentGraphics.position.y = this.valueScaleTransform.y;
+
+    this.animate();
+  }
+
+  zoomedY(yPos, kMultiplier) {
+    const newTransform = trackUtils.zoomedY(yPos, kMultiplier,
+      this.valueScaleTransform,
+      this.dimensions[1]);
+
+    this.valueScaleTransform = newTransform;
+    console.log('this.pMain.position', this.pMain.position);
+    this.segmentGraphics.scale.y = newTransform.k;
+    this.segmentGraphics.position.y = newTransform.y;
+
+    console.log('yPos:', yPos, 'y:',
+      newTransform.y, newTransform.k);
+
+    // console.log('zoomedY', yPos, kMultiplier);
+    this.animate();
   }
 
   zoomed(newXScale, newYScale) {

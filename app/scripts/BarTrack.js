@@ -1,4 +1,7 @@
 import { scaleLinear } from 'd3-scale';
+import { zoomIdentity } from 'd3-zoom';
+import { trackUtils } from './utils';
+
 import * as PIXI from 'pixi.js';
 
 import HorizontalLine1DPixiTrack from './HorizontalLine1DPixiTrack';
@@ -8,13 +11,13 @@ import { colorDomainToRgbaArray, colorToHex, gradient } from './utils';
 
 const HEX_WHITE = colorToHex('#FFFFFF');
 
-
 class BarTrack extends HorizontalLine1DPixiTrack {
   constructor(...args) {
     super(...args);
 
     this.zeroLine = new PIXI.Graphics();
     this.pMain.addChild(this.zeroLine);
+    this.valueScaleTransform = zoomIdentity;
 
     if (this.options && this.options.colorRange) {
       if (this.options.colorRangeGradient) {
@@ -292,6 +295,52 @@ class BarTrack extends HorizontalLine1DPixiTrack {
 
   zoomed(newXScale, newYScale) {
     super.zoomed(newXScale, newYScale);
+  }
+
+  movedY(dY) {
+    Object.values(this.fetchedTiles).forEach((tile) => {
+      const vst = this.valueScaleTransform;
+      const height = this.dimensions[1];
+
+      // clamp at the bottom and top
+      if (
+        vst.y + dY / vst.k > -(vst.k - 1) * height
+        && vst.y + dY / vst.k < 0
+      ) {
+        this.valueScaleTransform = vst.translate(
+          0, dY / vst.k
+        );
+      }
+
+      tile.graphics.position.y = this.valueScaleTransform.y;
+    });
+
+    this.animate();
+  }
+
+  zoomedY(yPos, kMultiplier) {
+    // we're only interested in scaling along one axis so we
+    // leave the translation of the other axis blank
+    const newTransform = trackUtils.zoomedY(
+      yPos, kMultiplier, this.valueScaleTransform, this.dimensions[1]
+    );
+    this.valueScaleTransform = newTransform;
+    console.log('yPos:', yPos, 'y:',
+      newTransform.y, newTransform.k);
+    console.log('zy');
+    this.zoomedValueScale = this.valueScaleTransform.rescaleY(
+      this.valueScale.clamp(false)
+    );
+    // this.pMain.scale.y = k1;
+    // this.pMain.position.y = t1;
+    Object.values(this.fetchedTiles).forEach((tile) => {
+      tile.graphics.scale.y = this.valueScaleTransform.k;
+      tile.graphics.position.y = this.valueScaleTransform.y;
+
+      this.drawAxis(this.zoomedValueScale);
+    });
+
+    this.animate();
   }
 
   /**

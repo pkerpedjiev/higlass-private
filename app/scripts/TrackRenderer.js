@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import * as PIXI from 'pixi.js';
 
 import { zoom, zoomIdentity } from 'd3-zoom';
-import { select, event } from 'd3-selection';
+import { select, event, clientPoint } from 'd3-selection';
 import { scaleLinear } from 'd3-scale';
 import slugid from 'slugid';
 
@@ -279,7 +279,6 @@ class TrackRenderer extends React.Component {
      * The size of some tracks probably changed, so let's just
      * redraw them.
      */
-
     // don't initiate this component if it has nothing to draw on
     if (!nextProps.svgElement || !nextProps.canvasElement) {
       return;
@@ -1035,6 +1034,32 @@ class TrackRenderer extends React.Component {
     return last;
   }
 
+  valueScaleZoom() {
+    const myWheelDelta = (dy, dm) => dy * (dm ? 120 : 1) / 500;
+
+    if (event.sourceEvent && event.sourceEvent.deltaY) {
+      // mouse move probably from a drag event
+      const dy = event.sourceEvent.deltaY;
+      const dm = event.sourceEvent.deltaMode;
+
+      const mwd = myWheelDelta(dy, dm);
+
+      const cp = clientPoint(this.props.canvasElement, event.sourceEvent);
+      for (const track of this.getTracksAtPosition(...cp)) {
+        track.zoomedY(cp[1] - track.position[1], 2 ** mwd);
+      }
+    } else if (event.sourceEvent && event.sourceEvent.movementY) {
+      // mouse wheel from zoom event
+      // const cp = clientPoint(this.props.canvasElement, event.sourceEvent);
+      for (const track of this.getTracksAtPosition(...this.zoomStartPos)) {
+        track.movedY(event.sourceEvent.movementY);
+      }
+    }
+
+    // reset the zoom transform
+    this.zoomTransform = this.zoomStartTransform;
+  }
+
   /**
    * Respond to a zoom event.
    *
@@ -1042,6 +1067,11 @@ class TrackRenderer extends React.Component {
    * to all the tracks.
    */
   zoomed() {
+    if (this.props.valueScaleZoom || this.valueScaleZooming) {
+      this.valueScaleZoom();
+      return;
+    }
+
     this.zoomTransform = !this.currentProps.zoomable
       ? zoomIdentity
       : event.transform;
@@ -1055,15 +1085,58 @@ class TrackRenderer extends React.Component {
     }
   }
 
+  /**
+   * Return a list of tracks under this position.
+   *
+   * The position should be relative to this.props.canvasElement.
+   *
+   * @param  {Number} x The query x position
+   * @param  {Number} y The query y position
+   * @return {Array}   An array of tracks at this position
+   */
+  getTracksAtPosition(x, y) {
+    const foundTracks = [];
+
+    for (const uid in this.trackDefObjects) {
+      const track = this.trackDefObjects[uid].trackObject;
+
+      const withinX = track.position[0] <= x && x <= track.position[0] + track.dimensions[0];
+      const withinY = track.position[1] <= y && y <= track.position[1] + track.dimensions[1];
+
+      if (withinX && withinY) {
+        foundTracks.push(track);
+      }
+    }
+
+    return foundTracks;
+  }
+
   zoomStarted() {
     this.zooming = true;
 
+    if (event.sourceEvent) {
+      this.zoomStartPos = clientPoint(this.props.canvasElement, event.sourceEvent);
+    }
+
+    if (this.props.valueScaleZoom) {
+      this.valueScaleZooming = true;
+    }
+
+    // store the current transform because we'll need to
+    // revert it if this turns out to be a value scale zoom
+    this.zoomStartTransform = this.zoomTransform;
     this.props.pubSub.publish('app.zoomStart');
   }
 
   zoomEnded() {
     this.zooming = false;
 
+    this.zoomStartPos = null;
+
+    if (this.valueScaleZooming) {
+      this.valueScaleZooming = false;
+      this.element.__zoom = this.zoomStartTransform;
+    }
     this.props.pubSub.publish('app.zoomEnd');
   }
 
@@ -1781,6 +1854,7 @@ TrackRenderer.propTypes = {
   width: PropTypes.number,
   xDomainLimits: PropTypes.array,
   yDomainLimits: PropTypes.array,
+  valueScaleZoom: PropTypes.bool,
   zoomDomain: PropTypes.array,
 };
 

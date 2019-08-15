@@ -369,9 +369,9 @@ expose(
       positionsBuffer,
       colorsBuffer,
       xScaleDomain: domain,
-      xScaleRange: scaleRange,
+      xScaleRange: scaleRange, 
     };
-
+    
     return Transfer(objData,
       [objData.positionsBuffer, colorsBuffer]);
   }

@@ -564,7 +564,7 @@ const renderSegments = (uid, tileIds, domain, scaleRange, position, dimensions, 
     prevRows,
   });
   const d = range(0, rows.length);
-  const r = [position[1], position[1] + dimensions[1]];
+  const r = [0, dimensions[1]];
   const yScale = scaleBand().domain(d).range(r).paddingInner(0.2);
 
   // console.log('rows:', rows);

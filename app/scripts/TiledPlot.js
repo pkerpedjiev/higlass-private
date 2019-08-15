@@ -1317,6 +1317,7 @@ class TiledPlot extends React.Component {
       initialXDomain: props.initialXDomain,
       initialYDomain: props.initialYDomain,
       trackSourceServers: props.trackSourceServers,
+      valueScaleZoom: props.valueScaleZoom,
       zoomable: props.zoomable,
       draggingHappending: props.draggingHappening,
     });
@@ -2069,6 +2070,7 @@ class TiledPlot extends React.Component {
           topHeight={this.topHeight}
           topHeightNoGallery={this.topHeightNoGallery}
           uid={this.props.uid}
+          valueScaleZoom={this.props.valueScaleZoom}
           viewOptions={this.props.viewOptions}
           width={this.state.width}
           xDomainLimits={this.props.xDomainLimits}
@@ -2320,6 +2322,7 @@ TiledPlot.propTypes = {
   tracks: PropTypes.object,
   trackSourceServers: PropTypes.array,
   uid: PropTypes.string,
+  valueScaleZoom: PropTypes.bool,
   viewOptions: PropTypes.object,
   zoomable: PropTypes.bool,
   zoomToDataExtentOnInit: PropTypes.func
