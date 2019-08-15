@@ -1,3 +1,4 @@
+import { zoomIdentity } from 'd3-zoom';
 import AxisPixi from '../AxisPixi';
 
 const range = (start, end) => {
@@ -281,10 +282,36 @@ const drawAxis = (track, valueScale) => {
   }
 };
 
+const zoomedY = (yPos, kMultiplier, transform, height) => {
+  const k0 = transform.k;
+  const t0 = transform.y;
+  const dp = (yPos - t0) / k0;
+  const k1 = Math.max(k0 / kMultiplier, 1.0);
+  let t1 = k0 * dp + t0 - k1 * dp;
+
+  // clamp at the bottom
+  t1 = Math.max(t1, -(k1 - 1) * height);
+
+  // clamp at the top
+  t1 = Math.min(t1, 0);
+  // right now, the point at position 162 is at position 0
+  // 0 = 1 * 162 - 162
+  //
+  // we want that when k = 2, that point is still at position
+  // 0 = 2 * 162 - t1
+  //  ypos = k0 * dp + t0
+  //  dp = (ypos - t0) / k0
+  //  nypos = k1 * dp + t1
+  //  k1 * dp + t1 = k0 * dp + t0
+  //  t1 = k0 * dp +t0 - k1 * dp
+  return zoomIdentity.translate(0, t1).scale(k1);
+};
+
 const trackUtils = {
   calculate1DZoomLevel,
   calculate1DVisibleTiles,
   drawAxis,
+  zoomedY,
 };
 
 export default trackUtils;
